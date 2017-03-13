@@ -51,7 +51,11 @@ void playGame(string input, Vector<Vector<char> > &board);
 
 int main() {	
    initGraphics(BOGGLE_WINDOW_WIDTH, BOGGLE_WINDOW_HEIGHT);
+   Lexicon english("EnglishWords.dat");
    Vector<Vector<char> > board;
+   Set<string> humanWordsList;
+   Set<string> computerWordsList;
+   Player player; // defined players in gboggle.h
    char respond = '?';
 
    // Game setup. 
@@ -106,10 +110,19 @@ int main() {
    cout << "OK, take all the time you wish and find all the words uou can! Signal that you are finished by entering empty line." <<endl;
    cout << "Enter the word: ";
    // Play Game multiple times
+   player = HUMAN;
    string word;
-   while(true){
+   while(player){
 	   cin >> word;
-	   playGame(word, board);
+	   // word did't meet minimum 4 chars length requirement
+	   if(word.size() < 4) cout << "The word did't meet minimum 4 chars length requirement. Try again: ";
+	   else if(humanWordsList.contains(word)) cout << "The word has been used already. Try again: ";
+	   else if(!english.contains(word)) cout << "NOT A VALID ENGLISGH WORD. TRY AGAIN: ";
+	   else{ 
+		   humanWordsList.add(word);
+		   recordWordForPlayer(word, player);
+		   playGame(word, board);
+	   }
    }
 
    return 0;
