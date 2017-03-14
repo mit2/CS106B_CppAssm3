@@ -24,6 +24,7 @@ const int BOGGLE_WINDOW_WIDTH = 650;
 const int BOGGLE_WINDOW_HEIGHT = 350;
 const int STANDART_CUBES_NUM = 16;
 const int BIG_BOGGLE_CUBES_NUM = 25;
+const int FINISH_THE_GAME = 2;
 
 const string STANDARD_CUBES[16]  = {
    "AAEEGN", "ABBJOO", "ACHOPS", "AFFKPS",
@@ -44,17 +45,18 @@ const string BIG_BOGGLE_CUBES[25]  = {
 
 void welcome();
 void giveInstructions();
-void takeAction(int res, Vector<Vector<char> > &board);
-void playGame(string input, Vector<Vector<char> > &board);
+void takeAction(int res, Grid<char> &board);
+void playGame(string input, Player player, Grid<char> &board);
+bool humanPlayRec(string word, Grid<char> &board);
+bool computerPlayRec(string word, Grid<char> &board);
 
 /* Main program */
 
 int main() {	
    initGraphics(BOGGLE_WINDOW_WIDTH, BOGGLE_WINDOW_HEIGHT);
    Lexicon english("EnglishWords.dat");
-   Vector<Vector<char> > board;
-   Set<string> humanWordsList;
-   Set<string> computerWordsList;
+   Grid<char> board((int)sqrt((float)STANDART_CUBES_NUM), (int)sqrt((float)STANDART_CUBES_NUM));
+   Set<string> wordsList;
    Player player; // defined players in gboggle.h
    char respond = '?';
 
@@ -109,19 +111,19 @@ int main() {
    cout << "Setup is finished. Lets begin!" <<endl;
    cout << "OK, take all the time you wish and find all the words uou can! Signal that you are finished by entering empty line." <<endl;
    cout << "Enter the word: ";
+   
    // Play Game multiple times
    player = HUMAN;
    string word;
-   while(player){
+   while(player != FINISH_THE_GAME){
 	   cin >> word;
-	   // word did't meet minimum 4 chars length requirement
 	   if(word.size() < 4) cout << "The word did't meet minimum 4 chars length requirement. Try again: ";
-	   else if(humanWordsList.contains(word)) cout << "The word has been used already. Try again: ";
+	   else if(wordsList.contains(word)) cout << "The word has been used already. Try again: ";
 	   else if(!english.contains(word)) cout << "NOT A VALID ENGLISGH WORD. TRY AGAIN: ";
 	   else{ 
-		   humanWordsList.add(word);
-		   recordWordForPlayer(word, player);
-		   playGame(word, board);
+		   wordsList.add(word);
+		   recordWordForPlayer(word, player); // display word erned points into GUI
+		   playGame(word, player, board);
 	   }
    }
 
@@ -181,7 +183,7 @@ void giveInstructions() {
  * Respond to user Actions.
  * res - 'y' or 'n' action
  */
-void takeAction(int res, Vector<Vector<char> > &board){
+void takeAction(int res, Grid<char> &board){
 	Vector<string> cubes;
 	string temp, letters;
 	int boardSize = 0;
@@ -190,15 +192,14 @@ void takeAction(int res, Vector<Vector<char> > &board){
 	case 1: giveInstructions();
 			break;
 	case 2: // setup Big Boggle board
-			for (int i = 0; i < (int)sqrt((float)BIG_BOGGLE_CUBES_NUM); i++){
-				Vector<char> boardCells;
-				board.add(boardCells);
-				for(int j = 0; j < (int)sqrt((float)BIG_BOGGLE_CUBES_NUM); j++){										
-					board[i].add(' ');
+			board.resize((int)sqrt((float)BIG_BOGGLE_CUBES_NUM), (int)sqrt((float)BIG_BOGGLE_CUBES_NUM));
+			for (int i = 0; i < board.numRows(); i++){
+				for(int j = 0; j < board.numCols(); j++){										
+					board[i][j] = ' ';
 				}
 			}
 			// display Game board
-			drawBoard((int)sqrt((float)BIG_BOGGLE_CUBES_NUM), (int)sqrt((float)BIG_BOGGLE_CUBES_NUM));
+			drawBoard(board.numRows(), board.numCols());
 			break;
 	case 3: // force board configurations by user requirements
 			cout << "Enter 25-characters string to identify witch letters you want on the cubes." <<endl;
@@ -211,23 +212,21 @@ void takeAction(int res, Vector<Vector<char> > &board){
 			}
 			
 			// if is setup Standart Boggle board
-			if(board.size() == 0){
-				for (int i = 0; i < (int)sqrt((float)STANDART_CUBES_NUM); i++){
-				Vector<char> boardCells;
-				board.add(boardCells);
-					for(int j = 0; j < (int)sqrt((float)STANDART_CUBES_NUM); j++){										
-						board[i].add(' ');
+			if(board.numRows() == (int)sqrt((float)STANDART_CUBES_NUM)){
+				for (int i = 0; i < board.numRows(); i++){
+					for(int j = 0; j < board.numCols(); j++){										
+						board[i][j] = ' ';
 					}
-				}
+			}
 			// display Game board
-			drawBoard((int)sqrt((float)STANDART_CUBES_NUM), (int)sqrt((float)STANDART_CUBES_NUM));
+			drawBoard(board.numRows(), board.numCols());
 			}
 			
 
 			// fill the board with letters
-			for (int i = 0, num = 0; i < board.size(); i++){
+			for (int i = 0, num = 0; i < board.numRows(); i++){
 				if(num > 25) break; // in case if user letter string.size > 25 ignore others letters
-				for(int j = 0; j < (signed int)board[0].size(); j++){
+				for(int j = 0; j < board.numCols(); j++){
 					labelCube(i, j, letters[num]);
 					num++;
 				}
@@ -235,7 +234,7 @@ void takeAction(int res, Vector<Vector<char> > &board){
 			break;
 	case 4: 
 			// define board size
-			if(board.size() < (int)sqrt((float)BIG_BOGGLE_CUBES_NUM))
+			if(board.numRows() < (int)sqrt((float)BIG_BOGGLE_CUBES_NUM))
 				boardSize = (int)sqrt((float)STANDART_CUBES_NUM);	
 			else
 				boardSize = (int)sqrt((float)BIG_BOGGLE_CUBES_NUM);
@@ -258,31 +257,19 @@ void takeAction(int res, Vector<Vector<char> > &board){
 			}
 
 			// fill-up Game board with random/shuffle cube side
-			if(board.size() == 0){ // for default config
-				for (int i = 0, pos = 0; i < boardSize; i++){
-				Vector<char> boardCells;
-				board.add(boardCells);
-					for(int j = 0; j < boardSize; j++){					
-						string cubeSides = cubes.get(pos);
-						board[i].add(cubeSides.at(randomInteger(0, cubeSides.size() - 1)));
-						pos++;
-					}
-				}
-			}else{					// for big boggle config
-				for (int i = 0, pos = 0; i < boardSize; i++){				
-					for(int j = 0; j < boardSize; j++){	
-						string cubeSides = cubes.get(pos);
-						board[i].set(j, cubeSides.at(randomInteger(0, cubeSides.size() - 1)));
-						pos++;
-					}
+			for (int i = 0, pos = 0; i < boardSize; i++){				
+				for(int j = 0; j < boardSize; j++){					
+					string cubeSides = cubes.get(pos);
+					board[i][j] = cubeSides.at(randomInteger(0, cubeSides.size() - 1));
+					pos++;
 				}
 			}
 			
 
 			// display Game board
 			drawBoard(boardSize, boardSize);
-			for (int i = 0; i < board.size(); i++){
-				for(int j = 0; j < (signed int)board[0].size(); j++){
+			for (int i = 0; i < board.numRows(); i++){
+				for(int j = 0; j < board.numCols(); j++){
 					labelCube(i, j, board[i][j]);
 				}
 			}
@@ -295,7 +282,33 @@ void takeAction(int res, Vector<Vector<char> > &board){
  * Game processor.
  * word - is a word to process
  */
-void playGame(string word, 	Vector<Vector<char> > &board){
+void playGame(string word, 	Player player, Grid<char> &board){
+	switch (player){
+	case HUMAN: if(humanPlayRec(word, board)){
+					// higlight word on the board;
+				}
+				break;
+	case COMPUTER: computerPlayRec(word, board);
+				break;
+	default: cout << "NOT existing player in System???" <<endl;
+	}	
+}
+
+/*
+ * Human plays the Game.
+ * word - is a word to process
+ * board - Boggle game board
+ */
+bool humanPlayRec(string word, Grid<char> &board){
 	
-	
+	return false;
+}
+
+/*
+ * Computer plays the Game.
+ * word - is a word to process
+ * board - Boggle game board
+ */
+bool computerPlayRec(string word, Grid<char> &board){
+	return false;
 }

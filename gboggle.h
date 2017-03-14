@@ -20,7 +20,7 @@
  * This enumeration distinguishes the human and computer players.
  */
 
-enum Player { HUMAN = 1, COMPUTER };
+enum Player { HUMAN, COMPUTER };
 
 /*
  * Function: drawBoard
