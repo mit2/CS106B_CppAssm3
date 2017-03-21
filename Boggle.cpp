@@ -9,6 +9,7 @@
  
 #include <iostream>
 #include <cmath>
+#include <array>
 #include "gboggle.h"
 #include "graphics.h"
 #include "grid.h"
@@ -16,6 +17,7 @@
 #include "random.h"
 #include "simpio.h"
 #include "vector.h"
+#include "foreach.h"
 using namespace std;
 
 /* Constants */
@@ -24,7 +26,7 @@ const int BOGGLE_WINDOW_WIDTH = 650;
 const int BOGGLE_WINDOW_HEIGHT = 350;
 const int STANDART_CUBES_NUM = 16;
 const int BIG_BOGGLE_CUBES_NUM = 25;
-const int FINISH_THE_GAME = 2;
+const int OUT = 2;
 
 const string STANDARD_CUBES[16]  = {
    "AAEEGN", "ABBJOO", "ACHOPS", "AFFKPS",
@@ -46,9 +48,10 @@ const string BIG_BOGGLE_CUBES[25]  = {
 void welcome();
 void giveInstructions();
 void takeAction(int res, Grid<char> &board);
-void playGame(string input, Player player, Grid<char> &board);
-bool humanPlayRec(string word, Grid<char> &board);
+bool playGame(string input, Player player, Grid<char> &board);
+bool humanPlayRec(string word, Grid<char> &board, Set<float> &visitedPos, bool wordStart,  int match[], Vector<float> &showPos);
 bool computerPlayRec(string word, Grid<char> &board);
+bool position(string word, Grid<char> &board, int *newMatch, Set<float> &visitedPos);
 
 /* Main program */
 
@@ -115,16 +118,30 @@ int main() {
    // Play Game multiple times
    player = HUMAN;
    string word;
-   while(player != FINISH_THE_GAME){
-	   cin >> word;
-	   if(word.size() < 4) cout << "The word did't meet minimum 4 chars length requirement. Try again: ";
-	   else if(wordsList.contains(word)) cout << "The word has been used already. Try again: ";
-	   else if(!english.contains(word)) cout << "NOT A VALID ENGLISGH WORD. TRY AGAIN: ";
-	   else{ 
-		   wordsList.add(word);
-		   recordWordForPlayer(word, player); // display word erned points into GUI
-		   playGame(word, player, board);
-	   }
+   cin.ignore(); //  flush the newline character out of the buffer, clear input before game start
+   while(player != OUT){
+	   // plays HUMAN
+	   if(player == HUMAN){
+		   getline(cin, word);
+		   if(word.empty()){ // if Human enter empty line to finish his tern
+			   cout << "EMPTY LINE" <<endl;
+			   player = COMPUTER;
+			   continue;
+		   }
+		   if(word.size() < 4) cout << "The word did't meet minimum 4 chars length requirement. Try again: ";
+		   else if(wordsList.contains(word)) cout << "The word has been used already. Try again: ";
+		   else if(!english.contains(word)) cout << "NOT A VALID ENGLISGH WORD. TRY AGAIN: ";
+		   else{ 
+			   wordsList.add(word);
+			   if(playGame(word, player, board)) recordWordForPlayer(word, player); // display word erned points into GUI
+			   else cout << "IMPOSSIBLE TO BUILD WORD ON THE BOARD. TRY AGAIN!" <<endl;   
+		   }
+		   
+	   }else{
+			// plays COMPUTER
+			cout << "PLAYS COMPUTER"<< endl;
+			cin >> word; // dummy stop code exec
+	   }	   
    }
 
    return 0;
@@ -191,11 +208,11 @@ void takeAction(int res, Grid<char> &board){
 	switch (res) {
 	case 1: giveInstructions();
 			break;
-	case 2: // setup Big Boggle board
+	case 2: // setup Big Boggle board, feel-up board with empty cells for show it in GUI
 			board.resize((int)sqrt((float)BIG_BOGGLE_CUBES_NUM), (int)sqrt((float)BIG_BOGGLE_CUBES_NUM));
 			for (int i = 0; i < board.numRows(); i++){
 				for(int j = 0; j < board.numCols(); j++){										
-					board[i][j] = ' ';
+					board[i][j] = '?';
 				}
 			}
 			// display Game board
@@ -211,11 +228,11 @@ void takeAction(int res, Grid<char> &board){
 				cin >> letters;
 			}
 			
-			// if is setup Standart Boggle board
+			// if is setup Standart Boggle board, to feel-up board with empty cells for show it in GUI
 			if(board.numRows() == (int)sqrt((float)STANDART_CUBES_NUM)){
 				for (int i = 0; i < board.numRows(); i++){
 					for(int j = 0; j < board.numCols(); j++){										
-						board[i][j] = ' ';
+						board[i][j] = '?';
 					}
 			}
 			// display Game board
@@ -227,6 +244,7 @@ void takeAction(int res, Grid<char> &board){
 			for (int i = 0, num = 0; i < board.numRows(); i++){
 				if(num > 25) break; // in case if user letter string.size > 25 ignore others letters
 				for(int j = 0; j < board.numCols(); j++){
+					board[i][j] = letters[num];
 					labelCube(i, j, letters[num]);
 					num++;
 				}
@@ -282,28 +300,89 @@ void takeAction(int res, Grid<char> &board){
  * Game processor.
  * word - is a word to process
  */
-void playGame(string word, 	Player player, Grid<char> &board){
+bool playGame(string word, 	Player player, Grid<char> &board){
+	Set<float> visitedPos; // to track matched/visited letters
+	Vector<float>showPos;
 	switch (player){
-	case HUMAN: if(humanPlayRec(word, board)){
+	case HUMAN: cout << "HUMAN PLAYS: "<< word <<endl;
+				if(humanPlayRec(word, board, visitedPos, false, 0, showPos)){	// MEMO: zerro 0  as it is by definition the null pointer.
 					// higlight word on the board;
+					cout << "TEST OK!"<<endl;
+					cout << "VISITED-POS SIZE: " << visitedPos.size() <<endl;
+					foreach(float pos in visitedPos)
+						cout << pos <<" ";
+					cout << endl;
+					foreach(float pos in showPos){
+						highlightCube((int)pos, (int)(pos*10)%10, true);
+						for(int i = 0; i < 60000000; i++) i++; // some dummy wait
+						highlightCube((int)pos, (int)(pos*10)%10, false);
+						//cout << (int)pos << ":" << (int)(pos*10)%10 << " ";						
+					}
+					return true;
+				}else{
+					cout << "TEST NOT PASS!"<<endl;
+					cout << "VISITED-POS SIZE: " << visitedPos.size() <<endl;
+					foreach(float pos in visitedPos)
+						cout << pos <<" ";
+
 				}
-				break;
+				return false;
 	case COMPUTER: computerPlayRec(word, board);
 				break;
 	default: cout << "NOT existing player in System???" <<endl;
 	}	
 }
 
+
 /*
- * Human plays the Game.
+ * Human plays the Game. VERSION 2
  * word - is a word to process
  * board - Boggle game board
  */
-bool humanPlayRec(string word, Grid<char> &board){
+bool humanPlayRec(string word, Grid<char> &board, Set<float> &visitedPos, bool wordStart, int match[], Vector<float> &showPos){
+	string memo = word;
+	int newMatch[2];
+	if(match != 0){ // null or 0 just for starting sentinel for searching the word on the board
+		newMatch[0] = match[0];
+		newMatch[1] = match[1];
+	}
+	float pos;
+	if(word.length() == 0) return true;	// base case
+
+	if(!wordStart){
+		for(int i = 0; i < board.numRows(); i++){
+			for(int j = 0; j < board.numCols(); j++){
+				newMatch[0] = i;
+				newMatch[1] = j;
+				if(position(word, board, newMatch, visitedPos)){
+					pos = newMatch[0] + newMatch[1]/10.0f; // convert newMatch to float for easy store in Set
+					cout << "ADD-POS :" << pos<<endl;
+					visitedPos.add(pos);
+					showPos.add(pos);
+					wordStart = true;
+					if(humanPlayRec(word.erase(0, 1), board, visitedPos, wordStart, newMatch, showPos)) return true;
+					visitedPos.remove(pos);
+					showPos.removeAt(showPos.size() - 1);
+					cout << "REMOVE-POS :" << pos<<endl;
+					//wordStart = false;
+					word = memo;
+				}
+			}
+		}
+	}else if(position(word, board, newMatch, visitedPos)){
+		pos = newMatch[0] + newMatch[1]/10.0f;
+		cout << "ADD-POS :" << pos<<endl;
+		visitedPos.add(pos);
+		showPos.add(pos);
+		if(humanPlayRec(word.erase(0, 1), board, visitedPos, wordStart, newMatch, showPos)) return true;
+		visitedPos.remove(pos);
+		showPos.removeAt(showPos.size() - 1);
+		cout << "REMOVE-POS :" << pos<<endl;
+		return false;
+	}
 	
 	return false;
 }
-
 /*
  * Computer plays the Game.
  * word - is a word to process
@@ -311,4 +390,31 @@ bool humanPlayRec(string word, Grid<char> &board){
  */
 bool computerPlayRec(string word, Grid<char> &board){
 	return false;
+}
+
+/*
+ * Checking if cell's char match word's 1st letter
+ * pos - is cell pos on the game board
+ * word - user's entered word
+ * return - matched pos
+ */
+bool position(string word, Grid<char> &board, int *newMatch, Set<float> &visitedPos){ // *newMatch, pass by reference array
+	cout << "NEW-MATCH: " << newMatch[0] << newMatch[1]<<endl;
+	int x = newMatch[0]; // setup x
+	int y = newMatch[1]; // setup y
+	float match;
+	int allpos[][2] = { {x, y}, {x, y-1} , { x+1, y-1} , {x+1, y} , {x+1, y+1}, {x, y+1} , {x-1, y+1} , {x-1, y} , {x-1, y-1} }; // 9 all possible destination from cell x,y with new (x*,y*) locations.
+
+	for(int i = 0; i < 9; i++){
+		match = allpos[i][0] + allpos[i][1]/10.0f; // convert pos to float for check in visitedPos
+		if(board.inBounds(allpos[i][0], allpos[i][1]) && board[allpos[i][0]][allpos[i][1]] == word[0] && !visitedPos.contains(match)){
+			cout << "ALLPOS: " << allpos[i][0] << allpos[i][1]<<endl;
+			cout << "BOARD MATCH: " << board[allpos[i][0]][allpos[i][1]] <<endl;
+			newMatch[0] = allpos[i][0];
+			newMatch[1] = allpos[i][1];
+			return true;
+		}
+	}
+		
+	return false;	// MEMO: zerro 0  as it is by definition the null pointer.
 }
