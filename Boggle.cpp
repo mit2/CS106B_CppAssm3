@@ -145,11 +145,41 @@ int main() {
 			playGame(word, player, board, wordsList, english);
 			cout << "GAME IS OVER! WOULD YOU LIKE TO PLAY NEW GAME?"<< endl;
 			getline(cin, word);
-			// ... START NEW GAME, REININT BOARD...
+			// ... START NEW GAME, REINIT BOARD...
+			if(word == "yes" || word == "y"){
+			   // erase board for new game
+			   initGraphics(BOGGLE_WINDOW_WIDTH, BOGGLE_WINDOW_HEIGHT);
+			   drawBoard(board.numRows(), board.numCols()); 
+
+			   // Back to Question-3 user action
+			   cout << "I will give you the chance to setup the Board to your specification, with make it easier to confirm your Boggle Program is working." <<endl;
+			   cout << "Do you want to force board configuration? y or n: ";
+			   while(respond != 'y' && respond != 'n'){
+				   cin >> respond;
+				   cout << endl <<endl; 
+				   if(respond == 'y')
+						takeAction(3, board); // force board configurations by user requirements
+				   else if(respond == 'n')			 
+						takeAction(4, board); // display default random configuration choosen by program;
+				   if(respond != 'y' && respond != 'n')
+					   cout << "Please respond 'y' or 'n'?: ";
+			   }
+			   respond = '?'; // clear respond
+
+			   // Start the Game
+			   cout << endl << endl;
+			   cout << "Setup is finished. Lets begin!" <<endl;
+			   cout << "OK, take all the time you wish and find all the words uou can! Signal that you are finished by entering empty line." <<endl;
+			   cout << "Enter the word: ";
+			   
+			   // Play Game multiple times
+			   player = HUMAN;
+			   cin.ignore(); //  flush the newline character out of the buffer, clear input before game start
+			}
+			else exit(0); // exit the game
 
 	   }	   
    }
-
    return 0;
 }
 
