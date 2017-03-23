@@ -48,9 +48,9 @@ const string BIG_BOGGLE_CUBES[25]  = {
 void welcome();
 void giveInstructions();
 void takeAction(int res, Grid<char> &board);
-bool playGame(string input, Player player, Grid<char> &board);
+bool playGame(string word, Player player, Grid<char> &board, Set<string> &wordsList, Lexicon &english);
 bool humanPlayRec(string word, Grid<char> &board, Set<float> &visitedPos, bool wordStart,  int match[], Vector<float> &showPos);
-bool computerPlayRec(string word, Grid<char> &board);
+bool computerPlayRec(string word, Grid<char> &board, Set<float> &visitedPos, bool startPos, int tryPos[], Set<string> &foundWords, Set<string> &wordsList, Lexicon &english);
 bool position(string word, Grid<char> &board, int *newMatch, Set<float> &visitedPos);
 
 /* Main program */
@@ -133,14 +133,20 @@ int main() {
 		   else if(!english.contains(word)) cout << "NOT A VALID ENGLISGH WORD. TRY AGAIN: ";
 		   else{ 
 			   wordsList.add(word);
-			   if(playGame(word, player, board)) recordWordForPlayer(word, player); // display word erned points into GUI
+			   if(playGame(word, player, board,	wordsList , english)) recordWordForPlayer(word, player); // display word erned points into GUI
 			   else cout << "IMPOSSIBLE TO BUILD WORD ON THE BOARD. TRY AGAIN!" <<endl;   
 		   }
 		   
 	   }else{
 			// plays COMPUTER
 			cout << "PLAYS COMPUTER"<< endl;
-			cin >> word; // dummy stop code exec
+			//cin >> word; // dummy stop code exec
+			word = ""; // clear word after last HUMAN match
+			playGame(word, player, board, wordsList, english);
+			cout << "GAME IS OVER! WOULD YOU LIKE TO PLAY NEW GAME?"<< endl;
+			getline(cin, word);
+			// ... START NEW GAME, REININT BOARD...
+
 	   }	   
    }
 
@@ -300,9 +306,10 @@ void takeAction(int res, Grid<char> &board){
  * Game processor.
  * word - is a word to process
  */
-bool playGame(string word, 	Player player, Grid<char> &board){
+bool playGame(string word, Player player, Grid<char> &board, Set<string> &wordsList, Lexicon &english){
 	Set<float> visitedPos; // to track matched/visited letters
 	Vector<float>showPos;
+	Set<string> foundWords; // words collection found by COMPUTER
 	switch (player){
 	case HUMAN: cout << "HUMAN PLAYS: "<< word <<endl;
 				if(humanPlayRec(word, board, visitedPos, false, 0, showPos)){	// MEMO: zerro 0  as it is by definition the null pointer.
@@ -316,7 +323,7 @@ bool playGame(string word, 	Player player, Grid<char> &board){
 						highlightCube((int)pos, (int)(pos*10)%10, true);
 						for(int i = 0; i < 60000000; i++) i++; // some dummy wait
 						highlightCube((int)pos, (int)(pos*10)%10, false);
-						//cout << (int)pos << ":" << (int)(pos*10)%10 << " ";						
+						cout << (int)pos << ":" << (int)(pos*10)%10 << " ";						
 					}
 					return true;
 				}else{
@@ -327,7 +334,10 @@ bool playGame(string word, 	Player player, Grid<char> &board){
 
 				}
 				return false;
-	case COMPUTER: computerPlayRec(word, board);
+	case COMPUTER: computerPlayRec(word, board, visitedPos, false, 0, foundWords, wordsList, english);
+				   // add list of all found words on board
+				   foreach(string word in foundWords)
+					   recordWordForPlayer(word, player);
 				break;
 	default: cout << "NOT existing player in System???" <<endl;
 	}	
@@ -385,11 +395,70 @@ bool humanPlayRec(string word, Grid<char> &board, Set<float> &visitedPos, bool w
 }
 /*
  * Computer plays the Game.
- * word - is a word to process
+ * word - is string used to build word
  * board - Boggle game board
+ * TESTING CUBES:     IOEGSYSXEBHSTFLA, STANFORD'S AND MINE RESULTS FOR COMPUTER IS 24!!!!!!!!!!!
  */
-bool computerPlayRec(string word, Grid<char> &board){
-	return false;
+bool computerPlayRec(string word, Grid<char> &board, Set<float> &visitedPos, bool startPos, int tryPos[], Set<string> &foundWords, Set<string> &wordsList, Lexicon &english){
+	// 2 F..KING BUGGS, LIKE 2 TIMES WAS DEFINED int x, y(count wrong all 8 pos) and return false in base case when was pos alredy visited cost 10 HOURES OF DEBUGGING!!!!!!!!!!!!!!!!!!
+	int newPos[2];
+	int x = 0, y = 0;
+	float pos, match;
+	if(tryPos != 0){
+		x = tryPos[0]; // setup x
+		y = tryPos[1]; // setup y
+	}
+	// 8 all possible destination from cell x,y with new (x*,y*) locations.
+	int allpos[][2] = { {x, y-1} , { x+1, y-1} , {x+1, y} , {x+1, y+1}, {x, y+1} , {x-1, y+1} , {x-1, y} , {x-1, y-1} }; 
+	/*if(tryPos != 0) cout << "TRYPOS: " << tryPos[0] << tryPos[1]<<endl;
+	for(int i = 0; i < 8; i++){
+		cout << allpos[i][0] << "," << allpos[i][1] << " ";
+	}
+	cout <<endl;*/
+	
+
+	if(!startPos){
+		for(int i = 0; i < board.numRows(); i++){
+			for(int j = 0; j < board.numCols(); j++){
+				newPos[0] = i;
+				newPos[1] = j;
+				word.push_back(board[i][j]); // add 1st letter to word string
+				pos = newPos[0] + newPos[1]/10.0f;
+				visitedPos.add(pos);
+				startPos = true;
+				if(computerPlayRec(word, board, visitedPos, startPos, newPos, foundWords, wordsList, english)) return true;
+				visitedPos.remove(pos);
+				word = "";
+			}
+		}
+	}else{
+		if(!english.containsPrefix(word)){
+			cout << "  NO PREFIX FOUND RETURN FALSE: " << word <<endl;
+			return false;	// base case
+		}
+		if(english.contains(word) && !wordsList.contains(word) && word.length() >= 4) foundWords.add(word); // add word found by COMPUTER	
+		for(int i = 0; i < 8; i++){
+			cout << "LOOP TIMES: " << i << " " << word <<endl;
+			if(board.inBounds(allpos[i][0], allpos[i][1])){
+				cout << "POS IN BOUNDS"<<endl;
+				match = allpos[i][0] + allpos[i][1]/10.0f; // convert pos to float for check in visitedPos
+				if(visitedPos.contains(match)){
+					cout << "  POS ALREDY WAS VISITED STOP SEARCH: " <<  board[allpos[i][0]][allpos[i][1]] << " " << match << endl;
+					continue; // base case, stop search if pos/letter was already visited
+				}
+				newPos[0] = allpos[i][0];
+				newPos[1] = allpos[i][1];
+				word.push_back(board[newPos[0]][newPos[1]]); // append new letter to word
+				pos = newPos[0] + newPos[1]/10.0f;
+				visitedPos.add(pos);
+				if(computerPlayRec(word, board, visitedPos, startPos, newPos, foundWords, wordsList, english)) return true;
+				visitedPos.remove(pos);
+				word.erase(word.length() - 1); // delete from word last added letter
+			}
+		}
+		return false; // all 8 cells arround tryPos is checked, backtrack now
+	}	
+	return true;  // all startPos is checked, exit
 }
 
 /*

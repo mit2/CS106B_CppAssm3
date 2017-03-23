@@ -41,9 +41,28 @@ using namespace std;
 		}
 	}*/
 
+	/*bool newPosition(string word, Grid<char> &board, int *newPos, Set<float> &visitedPos, Vector<string> &wordsList, Lexicon &english){ // *newMatch, pass by reference array
+		int x = newPos[0]; // setup x
+		int y = newPos[1]; // setup y
+		float match;
+		int allpos[][2] = { {x, y-1} , { x+1, y-1} , {x+1, y} , {x+1, y+1}, {x, y+1} , {x-1, y+1} , {x-1, y} , {x-1, y-1} }; // 9 all possible destination from cell x,y with new (x*,y*) locations.
+
+		for(int i = 0; i < 9; i++){
+			match = allpos[i][0] + allpos[i][1]/10.0f; // convert pos to float for check in visitedPos
+			if(board.inBounds(allpos[i][0], allpos[i][1]) && !visitedPos.contains(match)){
+				newPos[0] = allpos[i][0];
+				newPos[1] = allpos[i][1];
+				return true;
+			}
+		}
+			
+		return false;	// MEMO: zerro 0  as it is by definition the null pointer.
+	}*/
+
 /* Main program */
 
 int mai() {
+	Lexicon dict("EnglishWords.dat");
 	int n = 0;
 	string test = "abc";
 	string test2 = "abb";
@@ -64,10 +83,10 @@ int mai() {
 	//cout << 0/10.0 + 1/100.0; // 0.01
 	//if(n1 == n2)cout << "true"; //
 	float f = 4.0f;
-	cout << (int)f << "/" << (int)(f*10)%10;
+	//cout << (int)f << "/" << (int)(f*10)%10;
 	
 	//cout << 1 + 0/10.0f << endl; // 1 but not 1.0
-	//cout << 0 + 4/10.0f; // 1 but not 0.4
+	cout << -1 + 1/10.0f; // -0.9 but not -1,1
 	//cout << 4.%
 	//if(test[0] == test2[0]) cout << "MATCH!" << endl;
 
@@ -83,6 +102,11 @@ int mai() {
 		
 		}*/
 	
+	/*if(dict.containsPrefix("testsw")) cout << "OK" <<endl;
+	char ch = 'A';
+	string str = "ac";
+	str.push_back(ch);
+	cout << str;*/
 
 	return 0;
 }
