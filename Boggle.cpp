@@ -174,6 +174,7 @@ int main() {
 			   
 			   // Play Game multiple times
 			   player = HUMAN;
+			   wordsList.clear(); // clear words found by HUMAN in prev game
 			   cin.ignore(); //  flush the newline character out of the buffer, clear input before game start
 			}
 			else exit(0); // exit the game
